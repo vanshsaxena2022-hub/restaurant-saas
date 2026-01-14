@@ -8,6 +8,68 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>Restaurant SaaS</title>
+        <style>
+          body {
+            margin:0;
+            font-family: Arial, sans-serif;
+            background:#0f172a;
+            color:white;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+          }
+          .box {
+            background:#020617;
+            padding:50px;
+            border-radius:14px;
+            box-shadow:0 0 50px rgba(0,0,0,.6);
+            text-align:center;
+            max-width:500px;
+          }
+          h1 {
+            margin-bottom:10px;
+            color:#22c55e;
+          }
+          p {
+            color:#cbd5f5;
+            font-size:18px;
+          }
+          a {
+            display:inline-block;
+            margin-top:25px;
+            padding:12px 25px;
+            background:#22c55e;
+            color:black;
+            border-radius:8px;
+            text-decoration:none;
+            font-weight:bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="box">
+          <h1>Restaurant QR Ordering</h1>
+          <p>Scan • Order • Track • Review</p>
+          <a href="/health">Check System</a>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "LIVE",
+    serverTime: new Date()
+  });
+});
+
 
 // ------------------- HEALTH CHECK -------------------
 app.get("/test-db", async (req, res) => {
