@@ -7,11 +7,11 @@ const pool = require("./db");
 const app = express();
 app.get("/", (req, res) => {
   res.send(`
-    <h2>Restaurant SaaS is Live 🚀</h2>
+    <h1>Restaurant SaaS is Live 🚀</h1>
     <p>API Status: OK</p>
     <p>Try these:</p>
     <ul>
-      <li>/health</li>
+      <li><a href="/health">/health</a></li>
       <li>/menu/{restaurant_id}</li>
       <li>/dashboard/{restaurant_id}</li>
     </ul>
@@ -19,7 +19,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", time: new Date() });
+  res.json({ status: "LIVE", serverTime: new Date() });
 });
 
 app.use(cors());
