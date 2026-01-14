@@ -168,7 +168,7 @@ app.get("/menu/:restaurant_id/:table_id", async (req, res) => {
           const items = [];
           ${jsLines}
 
-          const res = await fetch("/order/create", {
+          const res = await fetch(window.location.origin + "/order/create", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
