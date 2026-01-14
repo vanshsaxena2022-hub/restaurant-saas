@@ -12,6 +12,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/debug/env", (req, res) => {
+  res.json({
+    PUBLIC_URL: process.env.PUBLIC_URL,
+    PORT: process.env.PORT,
+    RENDER: process.env.RENDER
+  });
+});
+
+
 /* ===========================
    DATABASE
 =========================== */
