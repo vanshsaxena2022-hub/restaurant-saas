@@ -126,14 +126,13 @@ app.get("/menu/:restaurant_id/:table_id", async (req, res) => {
     );
 
     let itemsHtml = "";
-    let jsLines = "";
 
     menu.rows.forEach(item => {
       itemsHtml += `
-        <div class="item">
+        <div style="margin-bottom:15px;padding:10px;border:1px solid #ddd">
           <b>${item.name}</b><br>
           ₹${item.price}<br>
-          <select id="q_${item.id}">
+          <select data-id="${item.id}">
             <option value="0">0</option>
             <option value="1">1</option>
             <option value="2">2</option>
@@ -143,55 +142,58 @@ app.get("/menu/:restaurant_id/:table_id", async (req, res) => {
           </select>
         </div>
       `;
-
-      jsLines += `
-        const q_${item.id} = document.getElementById("q_${item.id}").value;
-        if (q_${item.id} > 0) {
-          items.push({ menu_item_id: "${item.id}", quantity: q_${item.id} });
-        }
-      `;
     });
 
-    const html = `
-    <html>
-    <body>
-      <h2>Menu</h2>
-      <input id="name" placeholder="Your Name"/>
-      <input id="phone" placeholder="Phone"/>
+    res.send(`
+      <html>
+      <body style="font-family:Arial">
+        <h2>Menu</h2>
 
-      ${itemsHtml}
+        <input id="name" placeholder="Your Name"><br><br>
+        <input id="phone" placeholder="Phone"><br><br>
 
-      <button onclick="order()">Place Order</button>
+        ${itemsHtml}
 
-      <script>
-        async function order() {
-          const items = [];
-          ${jsLines}
+        <button onclick="submitOrder()">Place Order</button>
 
-          const res = await fetch(window.location.origin + "/order/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              restaurant_id: "${restaurant_id}",
-              table_id: "${table_id}",
-              name: document.getElementById("name").value,
-              phone: document.getElementById("phone").value,
-              items
-            })
-          });
+        <script>
+          async function submitOrder() {
+            const name = document.getElementById("name").value;
+            const phone = document.getElementById("phone").value;
 
-          const data = await res.json();
-          if (data.redirect) window.location = data.redirect;
-          else alert(data.error);
-        }
-      </script>
-    </body>
-    </html>
-    `;
+            const items = [];
+            document.querySelectorAll("select").forEach(sel => {
+              const qty = sel.value;
+              if (qty > 0) {
+                items.push({
+                  menu_item_id: sel.getAttribute("data-id"),
+                  quantity: qty
+                });
+              }
+            });
 
-    res.send(html);
+            const res = await fetch(window.location.origin + "/order/create", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                restaurant_id: "${restaurant_id}",
+                table_id: "${table_id}",
+                name,
+                phone,
+                items
+              })
+            });
+
+            const data = await res.json();
+            if (data.redirect) window.location = data.redirect;
+            else alert(data.error || "Order failed");
+          }
+        </script>
+      </body>
+      </html>
+    `);
   } catch (err) {
-    res.status(500).send("Menu error");
+    res.send("Menu error");
   }
 });
 
