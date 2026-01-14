@@ -69,23 +69,22 @@ app.post("/restaurant/signup", async (req, res) => {
 app.post("/table/add", async (req, res) => {
   try {
     const { restaurant_id, table_number } = req.body;
-    const id = uuidv4();
+    const table_id = uuidv4();
 
-          const BASE_URL = process.env.PUBLIC_URL || "http://localhost:4000";
-          const qr = `${BASE_URL}/menu/${restaurant_id}/${table_id}`;
+    const BASE_URL = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 4000}`;
 
-    const t = await pool.query(
-      `INSERT INTO tables(id,restaurant_id,table_number,qr_url)
-       VALUES($1,$2,$3,$4) RETURNING *`,
-      [id, restaurant_id, table_number, qr]
+    const qr = `${BASE_URL}/menu/${restaurant_id}/${table_id}`;
+
+    const table = await pool.query(
+      "INSERT INTO tables (id, restaurant_id, table_number, qr_url) VALUES ($1,$2,$3,$4) RETURNING *",
+      [table_id, restaurant_id, table_number, qr]
     );
 
-    res.json(t.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.json(table.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
-
 /* ===========================
    MENU
 =========================== */
