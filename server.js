@@ -71,7 +71,8 @@ app.post("/table/add", async (req, res) => {
     const { restaurant_id, table_number } = req.body;
     const id = uuidv4();
 
-    const qr = `${process.env.PUBLIC_URL}/menu/${restaurant_id}/${id}`;
+          const BASE_URL = process.env.PUBLIC_URL || "http://localhost:4000";
+          const qr = `${BASE_URL}/menu/${restaurant_id}/${table_id}`;
 
     const t = await pool.query(
       `INSERT INTO tables(id,restaurant_id,table_number,qr_url)
