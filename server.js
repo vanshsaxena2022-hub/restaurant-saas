@@ -5,6 +5,23 @@ const { v4: uuidv4 } = require("uuid");
 const pool = require("./db");
 
 const app = express();
+app.get("/", (req, res) => {
+  res.send(`
+    <h2>Restaurant SaaS is Live 🚀</h2>
+    <p>API Status: OK</p>
+    <p>Try these:</p>
+    <ul>
+      <li>/health</li>
+      <li>/menu/{restaurant_id}</li>
+      <li>/dashboard/{restaurant_id}</li>
+    </ul>
+  `);
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", time: new Date() });
+});
+
 app.use(cors());
 app.use(express.json());
 
