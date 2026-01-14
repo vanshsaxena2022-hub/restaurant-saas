@@ -240,25 +240,68 @@ app.get("/thank-you", (req,res)=>{
 /* ===========================
    DASHBOARD
 =========================== */
-app.get("/dashboard/:restaurant_id", async (req,res)=>{
-  const {restaurant_id}=req.params;
-  const r=await pool.query(`
-    SELECT o.id,o.status,c.name,t.table_number,c.phone
-    FROM orders o
-    JOIN customers c ON o.customer_id=c.id
-    JOIN tables t ON o.table_id=t.id
-    WHERE o.restaurant_id=$1
-    ORDER BY o.created_at DESC
-  `,[restaurant_id]);
+app.get("/dashboard/:restaurant_id", async (req, res) => {
+  const { restaurant_id } = req.params;
 
-  let html="<h2>Orders</h2>";
-  r.rows.forEach(o=>{
-    const wa=`https://wa.me/91${o.phone}?text=Thanks for visiting!`;
-    html+=`<div>Table ${o.table_number} - ${o.name} - ${o.status}
-    <a href="${wa}" target="_blank">WhatsApp</a></div>`;
-  });
+  res.send(`
+  <html>
+  <head>
+    <title>Kitchen Dashboard</title>
+    <style>
+      body { font-family: Arial; background:#f4f4f4; padding:20px; }
+      .card { background:white; padding:15px; margin-bottom:12px; border-radius:6px; }
+      .btn { padding:8px 12px; border:none; border-radius:5px; margin-right:8px; cursor:pointer; }
+      .prep { background:orange; color:white; }
+      .serve { background:green; color:white; }
+      .wa { background:#25D366; color:white; text-decoration:none; padding:8px 12px; border-radius:5px; }
+      .status { font-weight:bold; }
+    </style>
+  </head>
+  <body>
+    <h2>Live Orders</h2>
+    <div id="orders"></div>
 
-  res.send(html);
+    <script>
+      async function load(){
+        const res = await fetch("/orders/${restaurant_id}");
+        const data = await res.json();
+        const box = document.getElementById("orders");
+        box.innerHTML = "";
+
+        data.forEach(o => {
+          const div = document.createElement("div");
+          div.className = "card";
+
+          div.innerHTML = \`
+            <b>Table:</b> \${o.table_number}<br>
+            <b>Name:</b> \${o.customer_name}<br>
+            <b>Status:</b> <span class="status">\${o.status}</span><br><br>
+
+            <button class="btn prep" onclick="update('\${o.id}','preparing')">Preparing</button>
+            <button class="btn serve" onclick="update('\${o.id}','served')">Served</button>
+
+            \${o.can_message ? '<a class="wa" href="'+o.whatsapp_link+'" target="_blank">WhatsApp</a>' : ''}
+          \`;
+
+          box.appendChild(div);
+        });
+      }
+
+      async function update(id, status){
+        await fetch("/order/update-status", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ order_id:id, status })
+        });
+        load();
+      }
+
+      load();
+      setInterval(load, 5000);
+    </script>
+  </body>
+  </html>
+  `);
 });
 
 /* ===========================
