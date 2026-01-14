@@ -524,6 +524,10 @@ app.use((err, req, res, next) => {
   });
 });
 
+app.get("/menu/:restaurant_id", ...)
+app.get("/dashboard/:restaurant_id", ...)
+app.get("/orders/:restaurant_id", ...)
+
 
 // ------------------- START SERVER -------------------
 app.listen(4000, () => {
