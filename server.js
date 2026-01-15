@@ -24,10 +24,6 @@ app.get("/debug/env", (req, res) => {
 /* ===========================
    DATABASE
 =========================== */
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
 
 /* ===========================
    BOOT ROUTES
