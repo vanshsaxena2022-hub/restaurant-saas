@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
-const { Pool } = require("pg");
+const pool = require("./db");
 
 const app = express();
 
@@ -24,14 +24,10 @@ app.get("/debug/env", (req, res) => {
 /* ===========================
    DATABASE
 =========================== */
-const { Pool } = require("pg");
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
-
-module.exports = pool;
 
 /* ===========================
    BOOT ROUTES
