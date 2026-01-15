@@ -5,324 +5,201 @@ const { v4: uuidv4 } = require("uuid");
 const pool = require("./db");
 
 const app = express();
-
-/* ===========================
-   MIDDLEWARE
-=========================== */
 app.use(cors());
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send("Restaurant SaaS API is running");
+const BASE_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 4000}`;
+
+/* ===================== HEALTH ===================== */
+app.get("/health", (req,res)=>{
+  res.json({status:"LIVE", time:new Date()});
 });
 
-app.get("/health", (req, res) => {
-  res.json({ status: "OK", time: new Date() });
-});
-
-app.get("/test-db", async (req, res) => {
+app.get("/test-db", async (req,res)=>{
   try {
     const r = await pool.query("SELECT NOW()");
     res.json(r.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  } catch(e){
+    res.status(500).json({error:e.message});
   }
 });
 
-
-app.get("/debug/env", (req, res) => {
-  res.json({
-    PUBLIC_URL: process.env.PUBLIC_URL,
-    PORT: process.env.PORT,
-    RENDER: process.env.RENDER
-  });
-});
-
-
-/* ===========================
-   DATABASE
-=========================== */
-
-/* ===========================
-   BOOT ROUTES
-=========================== */
-app.get("/", (req, res) => {
-  res.send(`
-    <h1>Restaurant SaaS is Live 🚀</h1>
-    <p>API Status: OK</p>
-    <ul>
-      <li><a href="/health">/health</a></li>
-      <li>/menu/{restaurant_id}/{table_id}</li>
-      <li>/dashboard/{restaurant_id}</li>
-    </ul>
-  `);
-});
-
-app.get("/health", async (req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    res.json({ status: "LIVE", time: new Date() });
-  } catch (e) {
-    res.status(500).json({ status: "DB_ERROR", error: e.message });
-  }
-});
-
-/* ===========================
-   RESTAURANT
-=========================== */
-app.post("/restaurant/signup", async (req, res) => {
-  try {
-    const { name, phone, email } = req.body;
-
+/* ===================== RESTAURANT ===================== */
+app.post("/restaurant/signup", async (req,res)=>{
+  try{
+    const {name, phone, email} = req.body;
     const r = await pool.query(
-      `INSERT INTO restaurants(id,name,phone,email)
-       VALUES($1,$2,$3,$4) RETURNING *`,
+      "INSERT INTO restaurants(id,name,phone,email) VALUES($1,$2,$3,$4) RETURNING *",
       [uuidv4(), name, phone, email]
     );
-
     res.json(r.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  }catch(e){
+    res.status(500).json({error:e.message});
   }
 });
 
-/* ===========================
-   TABLE
-=========================== */
-app.post("/table/add", async (req, res) => {
-  try {
-    const { restaurant_id, table_number } = req.body;
+/* ===================== MENU ===================== */
+app.post("/menu/add", async (req,res)=>{
+  try{
+    const {restaurant_id, name, price, category} = req.body;
+    const i = await pool.query(
+      "INSERT INTO menu_items(id,restaurant_id,name,price,category,is_available) VALUES($1,$2,$3,$4,$5,true) RETURNING *",
+      [uuidv4(), restaurant_id, name, price, category]
+    );
+    res.json(i.rows[0]);
+  }catch(e){
+    res.status(500).json({error:e.message});
+  }
+});
+
+/* ===================== TABLE (QR) ===================== */
+app.post("/table/add", async (req,res)=>{
+  try{
+    const {restaurant_id, table_number} = req.body;
     const table_id = uuidv4();
+    const qr = `${BASE_URL}/menu/${restaurant_id}/${table_id}`;
 
-        const baseUrl =
-        process.env.RENDER_EXTERNAL_URL ||
-        `http://localhost:${process.env.PORT || 4000}`;
-
-           const qr = `${baseUrl}/menu/${restaurant_id}/${table_id}`;
-        
-
-    const table = await pool.query(
-      "INSERT INTO tables (id, restaurant_id, table_number, qr_url) VALUES ($1,$2,$3,$4) RETURNING *",
+    const t = await pool.query(
+      "INSERT INTO tables(id,restaurant_id,table_number,qr_url) VALUES($1,$2,$3,$4) RETURNING *",
       [table_id, restaurant_id, table_number, qr]
     );
-
-    res.json(table.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-/* ===========================
-   MENU
-=========================== */
-app.post("/menu/add", async (req, res) => {
-  try {
-    const { restaurant_id, name, price } = req.body;
-
-    const i = await pool.query(
-      `INSERT INTO menu_items(id,restaurant_id,name,price)
-       VALUES($1,$2,$3,$4) RETURNING *`,
-      [uuidv4(), restaurant_id, name, price]
-    );
-
-    res.json(i.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.json(t.rows[0]);
+  }catch(e){
+    res.status(500).json({error:e.message});
   }
 });
 
-app.get("/menu/:restaurant_id/:table_id", async (req, res) => {
-  try {
-    const { restaurant_id, table_id } = req.params;
+/* ===================== CUSTOMER MENU ===================== */
+app.get("/menu/:restaurant_id/:table_id", async (req,res)=>{
+  const {restaurant_id, table_id} = req.params;
+  const menu = await pool.query("SELECT * FROM menu_items WHERE restaurant_id=$1", [restaurant_id]);
 
-    const menu = await pool.query(
-      "SELECT * FROM menu_items WHERE restaurant_id = $1",
-      [restaurant_id]
-    );
+  let html = `<html><body><h2>Menu</h2>
+    <input id="name" placeholder="Your Name"><br><br>
+    <input id="phone" placeholder="Phone"><br><br>`;
 
-    let itemsHtml = "";
+  menu.rows.forEach(i=>{
+    html += `<div>
+      <b>${i.name}</b> ₹${i.price}
+      <select data-id="${i.id}">
+        <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option>
+      </select>
+    </div><br>`;
+  });
 
-    menu.rows.forEach(item => {
-      itemsHtml += `
-        <div style="margin-bottom:15px;padding:10px;border:1px solid #ddd">
-          <b>${item.name}</b><br>
-          ₹${item.price}<br>
-          <select data-id="${item.id}">
-            <option value="0">0</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
-        </div>
-      `;
-    });
+  html += `<button onclick="order()">Place Order</button>
+  <script>
+    async function order(){
+      const items=[];
+      document.querySelectorAll("select").forEach(s=>{
+        if(s.value>0) items.push({menu_item_id:s.dataset.id, quantity:s.value});
+      });
+      const res = await fetch("/order/create",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          restaurant_id:"${restaurant_id}",
+          table_id:"${table_id}",
+          name:document.getElementById("name").value,
+          phone:document.getElementById("phone").value,
+          items
+        })
+      });
+      const d=await res.json();
+      if(d.redirect) window.location=d.redirect; else alert(d.error);
+    }
+  </script></body></html>`;
 
-    res.send(`
-      <html>
-      <body style="font-family:Arial">
-        <h2>Menu</h2>
-
-        <input id="name" placeholder="Your Name"><br><br>
-        <input id="phone" placeholder="Phone"><br><br>
-
-        ${itemsHtml}
-
-        <button onclick="submitOrder()">Place Order</button>
-
-        <script>
-          async function submitOrder() {
-            const name = document.getElementById("name").value;
-            const phone = document.getElementById("phone").value;
-
-            const items = [];
-            document.querySelectorAll("select").forEach(sel => {
-              const qty = sel.value;
-              if (qty > 0) {
-                items.push({
-                  menu_item_id: sel.getAttribute("data-id"),
-                  quantity: qty
-                });
-              }
-            });
-
-            const res = await fetch(window.location.origin + "/order/create", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                restaurant_id: "${restaurant_id}",
-                table_id: "${table_id}",
-                name,
-                phone,
-                items
-              })
-            });
-
-            const data = await res.json();
-            if (data.redirect) window.location = data.redirect;
-            else alert(data.error || "Order failed");
-          }
-        </script>
-      </body>
-      </html>
-    `);
-  } catch (err) {
-    res.send("Menu error");
-  }
+  res.send(html);
 });
 
-
-/* ===========================
-   ORDER
-=========================== */
-app.post("/order/create", async (req, res) => {
-  try {
-    const { restaurant_id, table_id, name, phone, items } = req.body;
-
-    if (!items.length) return res.json({ error: "No items" });
+/* ===================== CREATE ORDER ===================== */
+app.post("/order/create", async (req,res)=>{
+  try{
+    const {restaurant_id, table_id, name, phone, items} = req.body;
+    if(!items.length) return res.json({error:"No items"});
 
     const c = await pool.query(
-      `INSERT INTO customers(id,name,phone,restaurant_id)
-       VALUES($1,$2,$3,$4) RETURNING id`,
+      "INSERT INTO customers(id,name,phone,restaurant_id,created_at) VALUES($1,$2,$3,$4,now()) RETURNING id",
       [uuidv4(), name, phone, restaurant_id]
     );
 
     const o = await pool.query(
-      `INSERT INTO orders(id,restaurant_id,table_id,customer_id,status)
-       VALUES($1,$2,$3,$4,'new') RETURNING id`,
+      "INSERT INTO orders(id,restaurant_id,table_id,customer_id,status,created_at) VALUES($1,$2,$3,$4,'new',now()) RETURNING id",
       [uuidv4(), restaurant_id, table_id, c.rows[0].id]
     );
 
-    for (let i of items) {
+    for(const i of items){
       await pool.query(
-        `INSERT INTO order_items(id,order_id,menu_item_id,quantity)
-         VALUES($1,$2,$3,$4)`,
+        "INSERT INTO order_items(id,order_id,menu_item_id,quantity) VALUES($1,$2,$3,$4)",
         [uuidv4(), o.rows[0].id, i.menu_item_id, i.quantity]
       );
     }
 
-    res.json({ redirect: "/thank-you" });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.json({redirect:"/thank-you"});
+  }catch(e){
+    res.status(500).json({error:e.message});
   }
 });
 
-app.get("/thank-you", (req,res)=>{
-  res.send("<h2>Order received</h2>");
+app.get("/thank-you",(req,res)=>{
+  res.send("<h2>Order Received</h2>");
 });
 
-/* ===========================
-   DASHBOARD
-=========================== */
-app.get("/dashboard/:restaurant_id", async (req, res) => {
-  const { restaurant_id } = req.params;
+/* ===================== KITCHEN ===================== */
+app.get("/orders/:restaurant_id", async (req,res)=>{
+  const q = await pool.query(`
+    SELECT o.id,o.status,c.name as customer_name,c.phone,t.table_number
+    FROM orders o
+    JOIN customers c ON o.customer_id=c.id
+    JOIN tables t ON o.table_id=t.id
+    WHERE o.restaurant_id=$1 ORDER BY o.created_at DESC`,[req.params.restaurant_id]);
 
-  res.send(`
-  <html>
-  <head>
-    <title>Kitchen Dashboard</title>
-    <style>
-      body { font-family: Arial; background:#f4f4f4; padding:20px; }
-      .card { background:white; padding:15px; margin-bottom:12px; border-radius:6px; }
-      .btn { padding:8px 12px; border:none; border-radius:5px; margin-right:8px; cursor:pointer; }
-      .prep { background:orange; color:white; }
-      .serve { background:green; color:white; }
-      .wa { background:#25D366; color:white; text-decoration:none; padding:8px 12px; border-radius:5px; }
-      .status { font-weight:bold; }
-    </style>
-  </head>
-  <body>
-    <h2>Live Orders</h2>
-    <div id="orders"></div>
-
-    <script>
-      async function load(){
-        const res = await fetch("/orders/${restaurant_id}");
-        const data = await res.json();
-        const box = document.getElementById("orders");
-        box.innerHTML = "";
-
-        data.forEach(o => {
-          const div = document.createElement("div");
-          div.className = "card";
-
-          div.innerHTML = \`
-            <b>Table:</b> \${o.table_number}<br>
-            <b>Name:</b> \${o.customer_name}<br>
-            <b>Status:</b> <span class="status">\${o.status}</span><br><br>
-
-            <button class="btn prep" onclick="update('\${o.id}','preparing')">Preparing</button>
-            <button class="btn serve" onclick="update('\${o.id}','served')">Served</button>
-
-            \${o.can_message ? '<a class="wa" href="'+o.whatsapp_link+'" target="_blank">WhatsApp</a>' : ''}
-          \`;
-
-          box.appendChild(div);
-        });
-      }
-
-      async function update(id, status){
-        await fetch("/order/update-status", {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ order_id:id, status })
-        });
-        load();
-      }
-
-      load();
-      setInterval(load, 5000);
-    </script>
-  </body>
-  </html>
-  `);
+  const data = q.rows.map(o=>{
+    const review = `${BASE_URL}/review/${o.id}`;
+    const msg = `Hi ${o.customer_name}, thanks for visiting 😊\nPlease review us:\n${review}`;
+    return {
+      ...o,
+      whatsapp_link: o.status==="served"?`https://wa.me/91${o.phone}?text=${encodeURIComponent(msg)}`:null,
+      can_message:o.status==="served"
+    };
+  });
+  res.json(data);
 });
 
-/* ===========================
-   START
-=========================== */
+app.post("/order/update-status", async (req,res)=>{
+  await pool.query("UPDATE orders SET status=$1 WHERE id=$2",[req.body.status, req.body.order_id]);
+  res.json({success:true});
+});
+
+app.get("/review/:order_id", async (req,res)=>{
+  const o = await pool.query("SELECT restaurant_id FROM orders WHERE id=$1",[req.params.order_id]);
+  if(!o.rows.length) return res.send("Invalid");
+  await pool.query("INSERT INTO reviews(id,order_id,restaurant_id,created_at) VALUES($1,$2,$3,now())",
+    [uuidv4(), req.params.order_id, o.rows[0].restaurant_id]);
+  res.redirect("https://www.google.com/maps");
+});
+
+/* ===================== DASHBOARD ===================== */
+app.get("/dashboard/:restaurant_id",(req,res)=>{
+  res.send(`<html><body><h2>Kitchen</h2><div id="o"></div>
+  <script>
+    async function load(){
+      const d=await fetch("/orders/${req.params.restaurant_id}").then(r=>r.json());
+      document.getElementById("o").innerHTML=d.map(o=>\`
+        <div>
+        Table \${o.table_number} - \${o.customer_name} - \${o.status}
+        <button onclick="u('\${o.id}','preparing')">Preparing</button>
+        <button onclick="u('\${o.id}','served')">Served</button>
+        \${o.whatsapp_link?'<a href="'+o.whatsapp_link+'" target="_blank">WhatsApp</a>':''}
+        </div>\`).join("");
+    }
+    async function u(id,s){await fetch("/order/update-status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({order_id:id,status:s})});load();}
+    setInterval(load,3000);load();
+  </script></body></html>`);
+});
+
+/* ===================== ROOT ===================== */
+app.get("/",(req,res)=>res.json({status:"Restaurant SaaS LIVE"}));
+
+/* ===================== START ===================== */
 const PORT = process.env.PORT || 4000;
-
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
-});
+app.listen(PORT, ()=>console.log("Running on",PORT));
