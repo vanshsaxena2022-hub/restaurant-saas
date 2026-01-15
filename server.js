@@ -12,6 +12,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("Restaurant SaaS API is running");
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", time: new Date() });
+});
+
+app.get("/test-db", async (req, res) => {
+  try {
+    const r = await pool.query("SELECT NOW()");
+    res.json(r.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 app.get("/debug/env", (req, res) => {
   res.json({
     PUBLIC_URL: process.env.PUBLIC_URL,
@@ -304,4 +322,7 @@ app.get("/dashboard/:restaurant_id", async (req, res) => {
    START
 =========================== */
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log("Running on", PORT));
+
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+});
