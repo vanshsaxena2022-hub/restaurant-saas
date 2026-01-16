@@ -180,9 +180,9 @@ app.get("/review/:order_id", async (req,res)=>{
 
 /* ===================== DASHBOARD ===================== */
 <script>
-  if (!localStorage.getItem("auth_${restaurant_id}")) {
+  if (!localStorage.getItem("auth_${restaurant_id}")) 
     window.location = "/login/${restaurant_id}";
-  }
+  
 </script>
 
 
@@ -291,41 +291,49 @@ app.post("/restaurant/set-password", async (req, res) => {
 
 
 app.get("/login/:restaurant_id", (req, res) => {
-  const { restaurant_id } = req.params;
+  const restaurant_id = req.params.restaurant_id;
 
   res.send(`
-    <html>
-    <body style="font-family:Arial;text-align:center;padding:40px">
-      <h2>Restaurant Login</h2>
-      <input id="pass" type="password" placeholder="Dashboard Password" />
-      <br><br>
-      <button onclick="login()">Login</button>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+</head>
+<body style="font-family:Arial;text-align:center;padding:40px">
 
-      <script>
-        async function login() {
-          const pass = document.getElementById("pass").value;
+  <h2>Restaurant Login</h2>
 
-          const res = await fetch("/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              restaurant_id: "${restaurant_id}",
-              password: pass
-            })
-          });
+  <input id="pass" type="password" placeholder="Dashboard Password" />
+  <br><br>
+  <button id="btn">Login</button>
 
-          const data = await res.json();
-          if (data.success) {
-            localStorage.setItem("auth_${restaurant_id}", "true");
-            window.location = "/dashboard/${restaurant_id}";
-          } else {
-            alert("Wrong password");
-          }
-        }
-      </script>
-    </body>
-    </html>
-  `);
+  <script>
+    document.getElementById("btn").onclick = async function () {
+      const pass = document.getElementById("pass").value;
+
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: "${restaurant_id}",
+          password: pass
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        localStorage.setItem("auth_${restaurant_id}", "true");
+        window.location.href = "/dashboard/${restaurant_id}";
+      } else {
+        alert("Wrong password");
+      }
+    };
+  </script>
+
+</body>
+</html>
+`);
 });
 
 app.post("/login", async (req, res) => {
