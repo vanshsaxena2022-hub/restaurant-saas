@@ -315,6 +315,20 @@ load(); setInterval(load,5000);
 `);
 });
 
+app.get("/_init/password", async (req, res) => {
+  try {
+    await pool.query(`
+      ALTER TABLE restaurants
+      ADD COLUMN IF NOT EXISTS dashboard_password TEXT
+    `);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+
 /* ===================== START ===================== */
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log("Running on", PORT));
