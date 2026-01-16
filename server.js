@@ -271,50 +271,73 @@ app.post("/login", async (req, res) => {
 
 /* ===================== DASHBOARD ===================== */
 app.get("/dashboard/:restaurant_id", (req, res) => {
-  const id = req.params.restaurant_id;
-  res.send(`
-                <script>
-                   if (!localStorage.getItem("auth_${restaurant_id}")) {
-                       window.location = "/login/${restaurant_id}";
-                       }
-                  </script>
+  const restaurant_id = req.params.restaurant_id;
 
+  res.send(`
+<!DOCTYPE html>
 <html>
+<head>
+  <title>Kitchen Dashboard</title>
+</head>
 <body>
 
 <h2>Kitchen Dashboard</h2>
 <div id="orders">Loading...</div>
 
 <script>
-async function load(){
-  const res = await fetch("/orders/${id}");
-  const data = await res.json();
-  const box=document.getElementById("orders");
-  box.innerHTML="";
-  data.forEach(o=>{
-    box.innerHTML+=\`
-<div>
-<b>Table:</b>\${o.table_number}<br>
-<b>Name:</b>\${o.customer_name}<br>
-<b>Status:</b>\${o.status}<br>
-<button onclick="update('\${o.id}','preparing')">Preparing</button>
-<button onclick="update('\${o.id}','served')">Served</button>
-\${o.whatsapp_link?'<a href="'+o.whatsapp_link+'" target="_blank">WhatsApp</a>':''}
-</div><hr>\`;
-  });
-}
-async function update(id,status){
-  await fetch("/order/update-status",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({order_id:id,status})});
-  load();
-}
-load(); setInterval(load,5000);
+  const RESTAURANT_ID = "${restaurant_id}";
+  const API = window.location.origin;
+
+  if (!localStorage.getItem("auth_" + RESTAURANT_ID)) {
+    window.location.href = "/login/" + RESTAURANT_ID;
+  }
+
+  async function loadOrders() {
+    const res = await fetch(API + "/orders/" + RESTAURANT_ID);
+    const data = await res.json();
+
+    const box = document.getElementById("orders");
+    box.innerHTML = "";
+
+    if (!data.length) {
+      box.innerHTML = "<p>No orders yet</p>";
+      return;
+    }
+
+    data.forEach(o => {
+      const div = document.createElement("div");
+      div.innerHTML = \`
+        <b>Table:</b> \${o.table_number}<br>
+        <b>Name:</b> \${o.customer_name}<br>
+        <b>Status:</b> \${o.status}<br><br>
+
+        <button onclick="update('\${o.id}','preparing')">Preparing</button>
+        <button onclick="update('\${o.id}','served')">Served</button>
+        \${o.whatsapp_link ? '<a href="'+o.whatsapp_link+'" target="_blank">WhatsApp</a>' : ''}
+        <hr>
+      \`;
+      box.appendChild(div);
+    });
+  }
+
+  async function update(id, status) {
+    await fetch(API + "/order/update-status", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ order_id:id, status })
+    });
+    loadOrders();
+  }
+
+  loadOrders();
+  setInterval(loadOrders, 5000);
 </script>
+
 </body>
 </html>
 `);
 });
-
+/* ===================== DEV TOOLS ===================== */
 app.get("/_init/password", async (req, res) => {
   try {
     await pool.query(`
