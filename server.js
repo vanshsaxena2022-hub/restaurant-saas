@@ -256,11 +256,18 @@ app.get("/dashboard/:restaurant_id", (req, res) => {
 `);
 });
 
+/* ===========================
+   SET DASHBOARD PASSWORD
+=========================== */
 app.post("/restaurant/set-password", async (req, res) => {
   try {
     const { restaurant_id, password } = req.body;
 
-    if (!password || password.length < 4) {
+    if (!restaurant_id || !password) {
+      return res.json({ error: "Missing data" });
+    }
+
+    if (password.length < 4) {
       return res.json({ error: "Password too short" });
     }
 
@@ -270,10 +277,11 @@ app.post("/restaurant/set-password", async (req, res) => {
     );
 
     res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 /* ===================== ROOT ===================== */
 app.get("/",(req,res)=>res.json({status:"Restaurant SaaS LIVE"}));
