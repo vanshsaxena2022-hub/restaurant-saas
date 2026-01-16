@@ -179,22 +179,81 @@ app.get("/review/:order_id", async (req,res)=>{
 });
 
 /* ===================== DASHBOARD ===================== */
-app.get("/dashboard/:restaurant_id",(req,res)=>{
-  res.send(`<html><body><h2>Kitchen</h2><div id="o"></div>
-  <script>
-    async function load(){
-      const d = await fetch("${BASE_URL}/orders/${req.params.restaurant_id}")
-      document.getElementById("o").innerHTML=d.map(o=>\`
-        <div>
-        Table \${o.table_number} - \${o.customer_name} - \${o.status}
-        <button onclick="u('\${o.id}','preparing')">Preparing</button>
-        <button onclick="u('\${o.id}','served')">Served</button>
-        \${o.whatsapp_link?'<a href="'+o.whatsapp_link+'" target="_blank">WhatsApp</a>':''}
-        </div>\`).join("");
+app.get("/dashboard/:restaurant_id", (req, res) => {
+  const restaurant_id = req.params.restaurant_id;
+
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Kitchen Dashboard</title>
+  <style>
+    body { font-family: Arial; background:#f4f4f4; padding:20px; }
+    .card { background:#fff; padding:15px; margin-bottom:10px; border-radius:6px; }
+    button { margin-right:6px; }
+    a { margin-left:10px; color:green; font-weight:bold; }
+  </style>
+</head>
+<body>
+
+<h2>Kitchen Orders</h2>
+<div id="orders">Loading...</div>
+
+<script>
+  const RESTAURANT_ID = "${restaurant_id}";
+  const API = "https://restaurant-saas.onrender.com";
+
+  async function loadOrders() {
+    try {
+      const res = await fetch(API + "/orders/" + RESTAURANT_ID);
+      const data = await res.json();
+
+      const box = document.getElementById("orders");
+      box.innerHTML = "";
+
+      if (data.length === 0) {
+        box.innerHTML = "<p>No orders yet</p>";
+        return;
+      }
+
+      data.forEach(o => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        div.innerHTML = \`
+          <b>Table:</b> \${o.table_number}<br>
+          <b>Name:</b> \${o.customer_name}<br>
+          <b>Status:</b> \${o.status}<br><br>
+
+          <button onclick="update('\${o.id}','preparing')">Preparing</button>
+          <button onclick="update('\${o.id}','served')">Served</button>
+          \${o.whatsapp_link ? '<a href="' + o.whatsapp_link + '" target="_blank">WhatsApp</a>' : ''}
+        \`;
+
+        box.appendChild(div);
+      });
+    } catch (err) {
+      document.getElementById("orders").innerHTML = "ERROR loading orders";
+      console.error(err);
     }
-    async function u(id,s){await fetch("/order/update-status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({order_id:id,status:s})});load();}
-    setInterval(load,3000);load();
-  </script></body></html>`);
+  }
+
+  async function update(id, status) {
+    await fetch(API + "/order/update-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order_id: id, status })
+    });
+    loadOrders();
+  }
+
+  loadOrders();
+  setInterval(loadOrders, 5000);
+</script>
+
+</body>
+</html>
+`);
 });
 
 /* ===================== ROOT ===================== */
