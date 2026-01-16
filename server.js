@@ -179,6 +179,13 @@ app.get("/review/:order_id", async (req,res)=>{
 });
 
 /* ===================== DASHBOARD ===================== */
+<script>
+  if (!localStorage.getItem("auth_${restaurant_id}")) {
+    window.location = "/login/${restaurant_id}";
+  }
+</script>
+
+
 app.get("/dashboard/:restaurant_id", (req, res) => {
   const restaurant_id = req.params.restaurant_id;
 
@@ -279,6 +286,66 @@ app.post("/restaurant/set-password", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+
+app.get("/login/:restaurant_id", (req, res) => {
+  const { restaurant_id } = req.params;
+
+  res.send(`
+    <html>
+    <body style="font-family:Arial;text-align:center;padding:40px">
+      <h2>Restaurant Login</h2>
+      <input id="pass" type="password" placeholder="Dashboard Password" />
+      <br><br>
+      <button onclick="login()">Login</button>
+
+      <script>
+        async function login() {
+          const pass = document.getElementById("pass").value;
+
+          const res = await fetch("/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              restaurant_id: "${restaurant_id}",
+              password: pass
+            })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            localStorage.setItem("auth_${restaurant_id}", "true");
+            window.location = "/dashboard/${restaurant_id}";
+          } else {
+            alert("Wrong password");
+          }
+        }
+      </script>
+    </body>
+    </html>
+  `);
+});
+
+app.post("/login", async (req, res) => {
+  try {
+    const { restaurant_id, password } = req.body;
+
+    const r = await pool.query(
+      "SELECT dashboard_password FROM restaurants WHERE id = $1",
+      [restaurant_id]
+    );
+
+    if (!r.rows.length) return res.json({ success: false });
+
+    if (r.rows[0].dashboard_password !== password) {
+      return res.json({ success: false });
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
