@@ -273,11 +273,11 @@ app.post("/login", async (req, res) => {
 app.get("/dashboard/:restaurant_id", (req, res) => {
   const id = req.params.restaurant_id;
   res.send(`
-          <script>
-            if (!localStorage.getItem("auth_${restaurant_id}")) {
-            window.location = "/login/${restaurant_id}";
-              }
-          </script>
+                <script>
+                   if (!localStorage.getItem("auth_${restaurant_id}")) {
+                       window.location = "/login/${restaurant_id}";
+                       }
+                  </script>
 
 <html>
 <body>
