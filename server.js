@@ -256,6 +256,25 @@ app.get("/dashboard/:restaurant_id", (req, res) => {
 `);
 });
 
+app.post("/restaurant/set-password", async (req, res) => {
+  try {
+    const { restaurant_id, password } = req.body;
+
+    if (!password || password.length < 4) {
+      return res.json({ error: "Password too short" });
+    }
+
+    await pool.query(
+      "UPDATE restaurants SET dashboard_password = $1 WHERE id = $2",
+      [password, restaurant_id]
+    );
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /* ===================== ROOT ===================== */
 app.get("/",(req,res)=>res.json({status:"Restaurant SaaS LIVE"}));
 
