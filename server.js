@@ -327,6 +327,18 @@ app.get("/_init/password", async (req, res) => {
   }
 });
 
+app.get("/_debug/restaurant/:id", async (req, res) => {
+  try {
+    const r = await pool.query(
+      "SELECT id, dashboard_password FROM restaurants WHERE id=$1",
+      [req.params.id]
+    );
+    res.json(r.rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 
 /* ===================== START ===================== */
