@@ -183,7 +183,7 @@ app.get("/dashboard/:restaurant_id",(req,res)=>{
   res.send(`<html><body><h2>Kitchen</h2><div id="o"></div>
   <script>
     async function load(){
-      const d=await fetch("/orders/${req.params.restaurant_id}").then(r=>r.json());
+      const d = await fetch("${BASE_URL}/orders/${req.params.restaurant_id}")
       document.getElementById("o").innerHTML=d.map(o=>\`
         <div>
         Table \${o.table_number} - \${o.customer_name} - \${o.status}
