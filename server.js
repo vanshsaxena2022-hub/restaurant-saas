@@ -274,16 +274,44 @@ app.post("/order/create", async (req, res) => {
   }
 });
 
-app.get("/thank-you",(req,res)=>{
+app.get("/thank-you", (req, res) => {
   res.send(`
-  <html>
-  <body style="font-family:Arial;text-align:center;padding:40px;background:#f5f7fb">
-    <h2>✅ Order Received</h2>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Thank You</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial;
+      background:#0f172a;
+      color:white;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      margin:0;
+    }
+    .box {
+      background:#020617;
+      padding:40px;
+      border-radius:16px;
+      text-align:center;
+      box-shadow:0 0 40px rgba(0,0,0,.6);
+      max-width:360px;
+    }
+    h1 { color:#22c55e; }
+    p { color:#cbd5f5; font-size:16px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Order Received ✅</h1>
     <p>Your order has been sent to the kitchen.</p>
-    <p>Please relax, we’ll serve you shortly 😊</p>
-    <small>Powered by Peddle Profit</small>
-  </body>
-  </html>
+    <p>Please relax — we’ll serve you shortly ☕</p>
+  </div>
+</body>
+</html>
   `);
 });
 
