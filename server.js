@@ -88,61 +88,161 @@ app.post("/table/add", async (req, res) => {
 app.get("/menu/:restaurant_id/:table_id", async (req, res) => {
   const { restaurant_id, table_id } = req.params;
   const menu = await pool.query(
-    "SELECT * FROM menu_items WHERE restaurant_id=$1",
+    "SELECT * FROM menu_items WHERE restaurant_id = $1",
     [restaurant_id]
   );
 
-  let html = `
+  let itemsHTML = "";
+
+  menu.rows.forEach(item => {
+    itemsHTML += `
+      <div class="card">
+        <div class="item-name">${item.name}</div>
+        <div class="item-footer">
+          <span class="price">₹${item.price}</span>
+          <select data-id="${item.id}">
+            <option value="0">Qty</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+      </div>
+    `;
+  });
+
+  res.send(`
+<!DOCTYPE html>
 <html>
+<head>
+  <title>Demo Cafe Menu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      padding-bottom: 90px;
+    }
+    .header {
+      background: #111;
+      color: #fff;
+      padding: 16px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .container {
+      padding: 16px;
+    }
+    .card {
+      background: #fff;
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+    .item-name {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .item-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .price {
+      font-size: 16px;
+      font-weight: bold;
+      color: #16a34a;
+    }
+    select {
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    .form {
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+    .order-btn {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #16a34a;
+      color: #fff;
+      padding: 18px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
 <body>
-<h2>Menu</h2>
-<input id="name" placeholder="Your Name"><br><br>
-<input id="phone" placeholder="Phone"><br><br>
-`;
 
-  menu.rows.forEach(i => {
-    html += `
-<div>
-<b>${i.name}</b> ₹${i.price}
-<select data-id="${i.id}">
-<option>0</option><option>1</option><option>2</option>
-<option>3</option><option>4</option>
-</select>
-</div><br>`;
-  });
+  <div class="header">Demo Cafe</div>
 
-  html += `
-<button onclick="order()">Place Order</button>
+  <div class="container">
+    <div class="form">
+      <input id="name" placeholder="Your Name" />
+      <input id="phone" placeholder="Phone Number" />
+    </div>
 
-<script>
-async function order(){
-  const items=[];
-  document.querySelectorAll("select").forEach(s=>{
-    if(s.value>0) items.push({menu_item_id:s.dataset.id, quantity:s.value});
-  });
+    ${itemsHTML}
+  </div>
 
-  const res = await fetch("/order/create",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      restaurant_id:"${restaurant_id}",
-      table_id:"${table_id}",
-      name:document.getElementById("name").value,
-      phone:document.getElementById("phone").value,
-      items
-    })
-  });
+  <button class="order-btn" onclick="placeOrder()">Place Order</button>
 
-  const d = await res.json();
-  if(d.redirect) window.location=d.redirect;
-  else alert(d.error);
-}
-</script>
+  <script>
+    async function placeOrder() {
+      const items = [];
+      document.querySelectorAll("select").forEach(sel => {
+        if (sel.value > 0) {
+          items.push({
+            menu_item_id: sel.dataset.id,
+            quantity: sel.value
+          });
+        }
+      });
+
+      if (items.length === 0) {
+        alert("Please select at least one item");
+        return;
+      }
+
+      const res = await fetch("/order/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: "${restaurant_id}",
+          table_id: "${table_id}",
+          name: document.getElementById("name").value,
+          phone: document.getElementById("phone").value,
+          items
+        })
+      });
+
+      const data = await res.json();
+      if (data.redirect) window.location = data.redirect;
+      else alert(data.error || "Order failed");
+    }
+  </script>
+
 </body>
 </html>
-`;
-
-  res.send(html);
+`);
 });
 
 /* ===================== ORDER ===================== */
@@ -174,8 +274,17 @@ app.post("/order/create", async (req, res) => {
   }
 });
 
-app.get("/thank-you", (req, res) => {
-  res.send("<h2>Order Received</h2>");
+app.get("/thank-you",(req,res)=>{
+  res.send(`
+  <html>
+  <body style="font-family:Arial;text-align:center;padding:40px;background:#f5f7fb">
+    <h2>✅ Order Received</h2>
+    <p>Your order has been sent to the kitchen.</p>
+    <p>Please relax, we’ll serve you shortly 😊</p>
+    <small>Powered by Peddle Profit</small>
+  </body>
+  </html>
+  `);
 });
 
 /* ===================== KITCHEN API ===================== */
